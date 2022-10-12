@@ -1,0 +1,129 @@
+---
+title: "p8105_hw3_sc5154"
+author: "Shaohan Chen"
+date: "2022-10-11"
+output: html_document
+---
+
+This is the solution of P8105 Data Science Homework3.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
+```
+
+Load necessary pacakges and the dataset we are about to use.
+
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+data("instacart")
+```
+
+
+## Problem 1
+```{r}
+ins_df = instacart %>%
+  janitor::clean_names()
+```
+
+The size of the dataset is: there are `r nrow(ins_df)` rows and `r ncol(ins_df)` columns in the dataset.
+
+The variables in the dataset include: `r colnames(ins_df)`.
+
+Key variables like `order_id` stands for the order identifier, `product_id` stands for product identifier, `add_to_cart_order` means order in which each product was added to cart, `reordered` indicates if this product has been ordered by this user, `order_dow` stands for the day of the week on which the order was placed, `product_name` stands for the name of the product.
+
+Example observations of this dataset can be seen as follows:
+
+```{r}
+head(ins_df[1:9],5)
+head(ins_df[10:15],5)
+```
+
+As you can see, the variable `order_id` takes integer values like 1, `product_name` are characters like 'Bulgarian Yogurt'.
+
+Next we answer the required questions.
+
+*Question 1.* How many aisles are there, and which aisles are the most items ordered from?
+
+* How many aisles are there:
+```{r}
+aisle_cnt = 
+  ins_df %>% 
+  select(aisle_id, aisle) %>% 
+  distinct %>%
+  nrow
+```
+There are `r aisle_cnt` aisles totally.
+
+* Which aisles are the most items ordered from:
+```{r}
+most_aisle = 
+  ins_df %>%
+  group_by(aisle_id, aisle) %>%
+  summarize(n_obs = n()) %>%
+  arrange(-n_obs, aisle) %>%
+  head(5)
+most_aisle
+```
+It can be seen that the top 5 aisles that most items ordered from are:
+
+'fresh vegetables', '	fresh fruits', 'packaged vegetables fruits', 'yogurt', 'packaged cheese'. And 'fresh vegetables' is the most items ordered from 
+
+*Question 2.* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+
+```{r}
+items_aisle = 
+  ins_df %>%
+  group_by(aisle_id, aisle) %>%
+  summarize(n_obs = n()) %>%
+  filter(n_obs > 10000) %>%
+  arrange(-n_obs, aisle) %>%
+  mutate(aisle = factor(aisle))
+```
+
+The aisles with top 20 most number of items ordered:
+```{r}
+ggplot(data = items_aisle[1:20, ], mapping = aes(x = reorder(aisle, -n_obs), y = n_obs)) +
+  geom_col() +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  geom_text(aes(label = n_obs), position = position_dodge(width = 0.9),size =      
+  1.0,vjust = -0.25) + 
+  labs(x = "Aisle", y = "Number of Items") 
+```
+
+The aisles with top 21 to 39 most number of items ordered:
+```{r}
+ggplot(data = items_aisle[21:39, ], mapping = aes(x = reorder(aisle, -n_obs), y = n_obs)) +
+  geom_col() +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  geom_text(aes(label = n_obs), position = position_dodge(width = 0.9),size =      
+  1.0,vjust = -0.25) + 
+  labs(x = "Aisle", y = "Number of Items") 
+```
+
+*Question 3.* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r}
+ins_df %>%
+  filter(aisle == 'baking ingredients' | aisle == 'dog food care' | aisle == 'packaged vegetables fruits') %>%
+  group_by(aisle, product_name) %>%
+  summarize(item_order_times = n()) %>%
+  mutate(item_rank = min_rank(-item_order_times)) %>%
+  arrange(aisle, item_rank) %>%
+  filter(item_rank <= 3)
+```
+
+*Question 4.* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r}
+ins_df %>%
+  filter(product_name == 'Pink Lady Apples' | product_name == 'Coffee Ice Cream') %>%
+  group_by(order_dow, product_name) %>%
+  summarize(mean_order_hour = mean(order_hour_of_day)) %>%
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean_order_hour
+  )
+```
+
+
