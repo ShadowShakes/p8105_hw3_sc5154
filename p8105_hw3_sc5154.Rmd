@@ -127,3 +127,77 @@ ins_df %>%
 ```
 
 
+## Problem 2
+
+Question 1. Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+```{r}
+accel_df = read_csv("Data/accel_data.csv") %>%
+  janitor::clean_names() %>%
+  mutate(
+    day_id = case_when(
+      day_id == (week - 1) * 7 + 1 ~ (week - 1) * 7 + 5,
+      day_id == (week - 1) * 7 + 2 ~ (week - 1) * 7 + 1,
+      day_id == (week - 1) * 7 + 3 ~ (week - 1) * 7 + 6,
+      day_id == (week - 1) * 7 + 4 ~ (week - 1) * 7 + 7,
+      day_id == (week - 1) * 7 + 5 ~ (week - 1) * 7 + 4,
+      day_id == (week - 1) * 7 + 6 ~ (week - 1) * 7 + 2,
+      day_id == (week - 1) * 7 + 7 ~ (week - 1) * 7 + 3
+      ),
+    is_weekday = ifelse((day == 'Saturday' | day == 'Sunday'), 0, 1)) %>%
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = 'activity_index',
+    names_prefix = 'activity_',
+    values_to = 'activity_cnt'
+  ) %>%
+  arrange(week, day_id)
+head(accel_df)
+```
+
+The resulting dataset has `r nrow(accel_df)` rows and `r ncol(accel_df)` columns.
+
+The existing variables include `r colnames(accel_df)`. Where 'is_weekday' is the new variable to indicate whether it is a weekday or weekend; 'activity_index' and 'activity_cnt' are manually added variables transformed from original observations using `pivot_longer`. The rest of the variables are time for activity record.
+
+Question 2. Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
+```{r}
+daily_accel = 
+  accel_df %>%
+    group_by(week, day_id) %>%
+    summarize(daily_activity_cnt = sum(activity_cnt)) %>%
+    arrange(week, day_id) 
+daily_accel
+```
+To see if there are apparent trends, we make a plot to help us analyze.
+
+```{r}
+ggplot(daily_accel, aes(day_id, y = daily_activity_cnt)) + 
+  geom_point() + 
+  geom_line() + 
+  scale_x_continuous(limits = c(1, 35), breaks = seq(1, 35, 7)) +
+  labs(x = 'Day', y = 'Daily Activity Counts')
+```
+The daily activities tend to rise with fluctuation within the week of first two weeks, and drop largely on the first day (Monday) of the next week. The oscillation range of  the third week seems to be narrower than previous two weeks and more stable. The last two weeks' daily activity records are very unstable with large oscillation range.
+
+Question 3. Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+
+```{r}
+accel_df %>%
+  mutate(
+    activity_index = as.numeric(activity_index),
+    hour = floor((activity_index - 1)/60) + 1,
+    day = factor(day, levels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))
+    ) %>%
+  group_by(day, hour) %>%
+  summarize(activity_mean = mean(activity_cnt)) %>%
+  arrange(day, hour) %>%
+  ggplot(aes(x = hour, y = activity_mean, color = day)) +
+    geom_point() + geom_line() + 
+    theme(legend.position = 'bottom') + 
+    labs(x = 'Hour of Day', y = 'Hourly Mean Activity', color = 'Day of Week')
+```
+Based on this graph, we have:
+* Generally in each day, the activities counts tend to be low at late night, midnight and early morning when maybe the person is still asleep. After 5 am the counts begin to rise and reach the peak after 10 am, and keep high level across the afternoon and evening until late night when maybe the person prepares to sleep.
+
+* For days in week, generally each day in week follows similar distribution and pattern on 24-hour activity counts. But there are still some extreme points, like that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night. There may be some connections between these extreme points with the beginning and ending of weekends.
