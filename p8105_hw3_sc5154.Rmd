@@ -15,12 +15,16 @@ Load necessary packages and the dataset we are about to use.
 
 ```{r}
 library(tidyverse)
+```
+
+
+## Problem 1
+```{r}
 library(p8105.datasets)
 data("instacart")
 ```
 
 
-## Problem 1
 ```{r}
 ins_df = instacart %>%
   janitor::clean_names()
@@ -129,7 +133,7 @@ ins_df %>%
 
 ## Problem 2
 
-Question 1. Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+*Question 1.* Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
 
 ```{r}
 accel_df = read_csv("Data/accel_data.csv") %>%
@@ -159,7 +163,7 @@ The resulting dataset has `r nrow(accel_df)` rows and `r ncol(accel_df)` columns
 
 The existing variables include `r colnames(accel_df)`. Where 'is_weekday' is the new variable to indicate whether it is a weekday or weekend; 'activity_index' and 'activity_cnt' are manually added variables transformed from original observations using `pivot_longer`. The rest of the variables are time for activity record.
 
-Question 2. Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+*Question 2.* Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
 
 ```{r}
 daily_accel = 
@@ -178,9 +182,9 @@ ggplot(daily_accel, aes(day_id, y = daily_activity_cnt)) +
   scale_x_continuous(limits = c(1, 35), breaks = seq(1, 35, 7)) +
   labs(x = 'Day', y = 'Daily Activity Counts')
 ```
-The daily activities tend to rise with fluctuation within the week of first two weeks, and drop largely on the first day (Monday) of the next week. The oscillation range of  the third week seems to be narrower than previous two weeks and more stable. The last two weeks' daily activity records are very unstable with large oscillation range.
+The daily activities tend to rise with fluctuation within the week of first two weeks, and drop largely on the first day (Monday) of the next week. The change range of  the third week seems to be narrower than previous two weeks and more stable. The last two weeks' daily activity records are very unstable with large change range.
 
-Question 3. Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+*Question 3.* Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
 
 ```{r}
 accel_df %>%
@@ -197,7 +201,104 @@ accel_df %>%
     theme(legend.position = 'bottom') + 
     labs(x = 'Hour of Day', y = 'Hourly Mean Activity', color = 'Day of Week')
 ```
+
 Based on this graph, we have:
 * Generally in each day, the activities counts tend to be low at late night, midnight and early morning when maybe the person is still asleep. After 5 am the counts begin to rise and reach the peak after 10 am, and keep high level across the afternoon and evening until late night when maybe the person prepares to sleep.
 
 * For days in week, generally each day in week follows similar distribution and pattern on 24-hour activity counts. But there are still some extreme points, like that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night. There may be some connections between these extreme points with the beginning and ending of weekends.
+
+
+## Problem 3
+
+```{r}
+library(p8105.datasets)
+library(patchwork)
+data("ny_noaa")
+```
+
+For the raw dataset, the dataset has `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns. Variables include `r colnames(ny_noaa)`.
+
+Next ,let's do some data exploration of the dataset.
+
+*Question 1.* Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
+
+Clean the datasets.
+```{r}
+noaa_df = 
+  ny_noaa %>%
+  janitor::clean_names() %>%
+  separate(date, c("year", "month", "day"), sep = "-", convert = TRUE) %>%
+  mutate(tmax = as.numeric(tmax), tmin = as.numeric(tmin))
+```
+
+The resulting dataset has `r nrow(noaa_df)` rows and `r ncol(noaa_df)` columns.
+
+The existing variables include `r colnames(noaa_df)`. Where 'id' is the id of recording station; 'year', 'month', 'station' is the time variable; 'prcp', 'snow', 'snwd', 'tmax' and 'tmin' are weather variables respectively stands for  Precipitation (tenths of mm),  Snowfall (mm), Snow depth (mm), Maximum temperature (tenths of degrees C), Minimum temperature (tenths of degrees C).
+
+```{r}
+most_snowf = 
+  noaa_df %>%
+  group_by(snow) %>%
+  summarize(n_obs = n()) %>%
+  arrange(-n_obs) %>%
+  head(1)
+```
+
+For snowfall, the most commonly observed values are: `r most_snowf$snow` with `r most_snow$n_obs` observations. That's probably because the New York State does not often snow and some records may be missing.
+
+*Question 2.* Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+
+```{r}
+tmax_mean_jan = 
+  noaa_df %>%
+    filter(month == 1) %>%
+    group_by(id, year) %>%
+    summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
+    drop_na(mean_tmax) %>%
+    ggplot(aes(x = id, y = mean_tmax, color = year)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(se = FALSE) +
+    theme(legend.position = "bottom") + 
+    labs(x = 'Station', y = "Mean Max Temperature") + 
+    ggtitle("January")
+
+tmax_mean_jul = 
+  noaa_df %>%
+    filter(month == 7) %>%
+    group_by(id, year) %>%
+    summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
+    drop_na(mean_tmax) %>%
+    ggplot(aes(x = id, y = mean_tmax, color = year)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(se = FALSE) +
+    theme(legend.position = "bottom") +
+    labs(x = 'Station', y = "Mean Max Temperature") + 
+    ggtitle("July")
+
+tmax_mean_jan + tmax_mean_jul
+```
+
+Based on the two-panel plot, the range of max temperature(tmax) in January is around -100 to 100, in July is around 200 to 320. Generally the mean tmax in July is much higher than January. And the temperature difference range in January is around 200, which is larger than in July that is around 100. There is some outliers in January and July. In January there are extremely low tmax lower than -100 and extremely high tmax close to 100. In July there are also extremely high tmax close to 350 and extremely low tmax lower than 150.
+
+*Question 3.* Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+
+
+```{r}
+tmax_vs_tmin = 
+  noaa_df %>%
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_hex()
+
+snowfall_plot = 
+  ny_noaa %>%
+  janitor::clean_names() %>%
+  mutate(tmax = as.numeric(tmax), tmin = as.numeric(tmin)) %>%
+  group_by(date) %>%
+  filter(snow > 0 & snow < 100) %>%
+  summarize(mean_snow = mean(snow, na.rm = TRUE)) %>%
+  ggplot(aes(x = date, y = mean_snow)) + 
+  geom_hex()
+
+tmax_vs_tmin / snowfall_plot
+```
+
