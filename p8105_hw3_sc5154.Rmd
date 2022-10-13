@@ -182,6 +182,7 @@ ggplot(daily_accel, aes(day_id, y = daily_activity_cnt)) +
   scale_x_continuous(limits = c(1, 35), breaks = seq(1, 35, 7)) +
   labs(x = 'Day', y = 'Daily Activity Counts')
 ```
+
 The daily activities tend to rise with fluctuation within the week of first two weeks, and drop largely on the first day (Monday) of the next week. The change range of  the third week seems to be narrower than previous two weeks and more stable. The last two weeks' daily activity records are very unstable with large change range.
 
 *Question 3.* Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
@@ -203,6 +204,7 @@ accel_df %>%
 ```
 
 Based on this graph, we have:
+
 * Generally in each day, the activities counts tend to be low at late night, midnight and early morning when maybe the person is still asleep. After 5 am the counts begin to rise and reach the peak after 10 am, and keep high level across the afternoon and evening until late night when maybe the person prepares to sleep.
 
 * For days in week, generally each day in week follows similar distribution and pattern on 24-hour activity counts. But there are still some extreme points, like that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night. There may be some connections between these extreme points with the beginning and ending of weekends.
@@ -236,7 +238,7 @@ The resulting dataset has `r nrow(noaa_df)` rows and `r ncol(noaa_df)` columns.
 The existing variables include `r colnames(noaa_df)`. Where 'id' is the id of recording station; 'year', 'month', 'station' is the time variable; 'prcp', 'snow', 'snwd', 'tmax' and 'tmin' are weather variables respectively stands for  Precipitation (tenths of mm),  Snowfall (mm), Snow depth (mm), Maximum temperature (tenths of degrees C), Minimum temperature (tenths of degrees C).
 
 ```{r}
-most_snowf = 
+most_snow = 
   noaa_df %>%
   group_by(snow) %>%
   summarize(n_obs = n()) %>%
@@ -244,7 +246,7 @@ most_snowf =
   head(1)
 ```
 
-For snowfall, the most commonly observed values are: `r most_snowf$snow` with `r most_snow$n_obs` observations. That's probably because the New York State does not often snow and some records may be missing.
+For snowfall, the most commonly observed values are: `r most_snow$snow` with `r most_snow$n_obs` observations. That's probably because the New York State does not often snow and some records may be missing.
 
 *Question 2.* Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
