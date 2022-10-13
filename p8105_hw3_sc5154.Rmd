@@ -14,14 +14,20 @@ knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
 Load necessary packages and the dataset we are about to use.
 
 ```{r}
+library(p8105.datasets)
 library(tidyverse)
+library(ggridges)
+library(patchwork)
 ```
 
 
 ## Problem 1
 ```{r}
-library(p8105.datasets)
 data("instacart")
+
+instacart = 
+  instacart %>% 
+  as_tibble(instacart)
 ```
 
 
@@ -32,12 +38,13 @@ ins_df = instacart %>%
 
 The size of the dataset is: there are `r nrow(ins_df)` rows and `r ncol(ins_df)` columns in the dataset.
 
-The variables in the dataset include: `r colnames(ins_df)`.
+The variables in the dataset are: `r colnames(ins_df)`.
 
-Key variables like `order_id` stands for the order identifier, `product_id` stands for product identifier, `add_to_cart_order` means order in which each product was added to cart, `reordered` indicates if this product has been ordered by this user, `order_dow` stands for the day of the week on which the order was placed, `product_name` stands for the name of the product.
+Key variables include indicators for user, order, and product. Order-level variables include 'order_dow' and  'order_hour_of_day' which describe the day and time of order. Item-level variables include 'product_name', 'department' and 'aisle' which describe specific information of the product. There are also some other descriptive variables like 'add_to_cart_order' which means order in which each product was added to cart, and 'reordered' indicates if this product has been ordered by this user.
+
+In total, there are `r ins_df %>% select(product_id) %>% distinct %>% count` distinct products found in `r ins_df %>% select(user_id, order_id) %>% distinct %>% count` distinct orders from `r ins_df %>% select(user_id) %>% distinct %>% count` distinct users.
 
 Example observations of this dataset can be seen as follows:
-
 ```{r}
 head(ins_df[1:9],5)
 head(ins_df[10:15],5)
@@ -69,40 +76,31 @@ most_aisle =
   head(5)
 most_aisle
 ```
+
 It can be seen that the top 5 aisles that most items ordered from are:
 
-'fresh vegetables', '	fresh fruits', 'packaged vegetables fruits', 'yogurt', 'packaged cheese'. And 'fresh vegetables' is the most items ordered from 
+'fresh vegetables', '	fresh fruits', 'packaged vegetables fruits', 'yogurt', 'packaged cheese'. And 'fresh vegetables' is the most items ordered from.
 
 *Question 2.* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
 
+
+The plot which display aisles with top most number of items ordered:
 ```{r}
-items_aisle = 
-  ins_df %>%
+ins_df %>%
   group_by(aisle_id, aisle) %>%
   summarize(n_obs = n()) %>%
   filter(n_obs > 10000) %>%
   arrange(-n_obs, aisle) %>%
-  mutate(aisle = factor(aisle))
-```
-
-The aisles with top 20 most number of items ordered:
-```{r}
-ggplot(data = items_aisle[1:20, ], mapping = aes(x = reorder(aisle, -n_obs), y = n_obs)) +
-  geom_col() +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  geom_text(aes(label = n_obs), position = position_dodge(width = 0.9),size =      
-  1.0,vjust = -0.25) + 
-  labs(x = "Aisle", y = "Number of Items") 
-```
-
-The aisles with top 21 to 39 most number of items ordered:
-```{r}
-ggplot(data = items_aisle[21:39, ], mapping = aes(x = reorder(aisle, -n_obs), y = n_obs)) +
-  geom_col() +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  geom_text(aes(label = n_obs), position = position_dodge(width = 0.9),size =      
-  1.0,vjust = -0.25) + 
-  labs(x = "Aisle", y = "Number of Items") 
+  mutate(aisle = factor(aisle)) %>%
+  ggplot(aes(x = reorder(aisle, -n_obs), y = n_obs)) +
+    geom_col() +
+    scale_x_discrete(guide = guide_axis(angle = 45)) +
+    geom_text(
+      aes(label = n_obs), 
+      position = position_dodge(width = 0.9), 
+      size = 1.0,
+      cvjust = -0.25) + 
+    labs(x = "Aisle", y = "Number of Items") 
 ```
 
 *Question 3.* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
@@ -113,8 +111,9 @@ ins_df %>%
   group_by(aisle, product_name) %>%
   summarize(item_order_times = n()) %>%
   mutate(item_rank = min_rank(-item_order_times)) %>%
-  arrange(aisle, item_rank) %>%
-  filter(item_rank <= 3)
+  arrange(-item_order_times) %>%
+  filter(item_rank <= 3) %>%
+  knitr::kable()
 ```
 
 *Question 4.* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
@@ -127,7 +126,8 @@ ins_df %>%
   pivot_wider(
     names_from = order_dow,
     values_from = mean_order_hour
-  )
+  ) %>%
+  knitr::kable(digits = 2)
 ```
 
 
@@ -138,22 +138,16 @@ ins_df %>%
 ```{r}
 accel_df = read_csv("Data/accel_data.csv") %>%
   janitor::clean_names() %>%
-  mutate(
-    day_id = case_when(
-      day_id == (week - 1) * 7 + 1 ~ (week - 1) * 7 + 5,
-      day_id == (week - 1) * 7 + 2 ~ (week - 1) * 7 + 1,
-      day_id == (week - 1) * 7 + 3 ~ (week - 1) * 7 + 6,
-      day_id == (week - 1) * 7 + 4 ~ (week - 1) * 7 + 7,
-      day_id == (week - 1) * 7 + 5 ~ (week - 1) * 7 + 4,
-      day_id == (week - 1) * 7 + 6 ~ (week - 1) * 7 + 2,
-      day_id == (week - 1) * 7 + 7 ~ (week - 1) * 7 + 3
-      ),
-    is_weekday = ifelse((day == 'Saturday' | day == 'Sunday'), 0, 1)) %>%
   pivot_longer(
     activity_1:activity_1440,
     names_to = 'activity_index',
     names_prefix = 'activity_',
     values_to = 'activity_cnt'
+  ) %>%
+  mutate(
+  day = factor(day, levels = c('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
+  is_weekday = ifelse((day == 'Saturday' | day == 'Sunday'), 0, 1),
+  activity_index = as.numeric(activity_index)
   ) %>%
   arrange(week, day_id)
 head(accel_df)
@@ -166,55 +160,47 @@ The existing variables include `r colnames(accel_df)`. Where 'is_weekday' is the
 *Question 2.* Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
 
 ```{r}
-daily_accel = 
-  accel_df %>%
-    group_by(week, day_id) %>%
-    summarize(daily_activity_cnt = sum(activity_cnt)) %>%
-    arrange(week, day_id) 
-daily_accel
-```
-To see if there are apparent trends, we make a plot to help us analyze.
-
-```{r}
-ggplot(daily_accel, aes(day_id, y = daily_activity_cnt)) + 
-  geom_point() + 
-  geom_line() + 
-  scale_x_continuous(limits = c(1, 35), breaks = seq(1, 35, 7)) +
-  labs(x = 'Day', y = 'Daily Activity Counts')
+accel_df %>%
+  group_by(week, day) %>%
+  summarize(daily_activity_tot = sum(activity_cnt)) %>%
+  arrange(week, day) %>%
+  pivot_wider(
+    names_from = day,
+    values_from = daily_activity_tot
+  ) %>%
+  knitr::kable()
 ```
 
-The daily activities tend to rise with fluctuation within the week of first two weeks, and drop largely on the first day (Monday) of the next week. The change range of  the third week seems to be narrower than previous two weeks and more stable. The last two weeks' daily activity records are very unstable with large change range.
+
+The daily total activities tend to change with fluctuation within each week. The daily total activity counts on Saturday for last two weeks are both 1440 which means the activity counts is 1 for every minute. That seems to be abnormal and the data on these two days could be considered as outliers.
 
 *Question 3.* Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
 
 ```{r}
 accel_df %>%
   mutate(
-    activity_index = as.numeric(activity_index),
-    hour = floor((activity_index - 1)/60) + 1,
-    day = factor(day, levels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))
+    daily_time = floor((activity_index)/60) +
+      (1/60) * (activity_index) %% 60
     ) %>%
-  group_by(day, hour) %>%
-  summarize(activity_mean = mean(activity_cnt)) %>%
-  arrange(day, hour) %>%
-  ggplot(aes(x = hour, y = activity_mean, color = day)) +
-    geom_point() + geom_line() + 
+  ggplot(aes(x = daily_time, y = activity_cnt, color = day)) +
+    geom_line(alpha = 0.3) + 
     theme(legend.position = 'bottom') + 
-    labs(x = 'Hour of Day', y = 'Hourly Mean Activity', color = 'Day of Week')
+    scale_x_continuous(limits = c(0,24), breaks = seq(0, 24, 2)) +
+    labs(x = 'Hours from Midnight', 
+         y = 'Activity Counts', 
+         color = 'Day of Week')
 ```
 
 Based on this graph, we have:
 
-* Generally in each day, the activities counts tend to be low at late night, midnight and early morning when maybe the person is still asleep. After 5 am the counts begin to rise and reach the peak after 10 am, and keep high level across the afternoon and evening until late night when maybe the person prepares to sleep.
+* Generally in each day, the activity counts tend to be lower at late night, midnight and early morning from around 24 pm to 6 am, and higher between 6am to 22 pm. Generally the activity counts would reach a peak between around 11 am to 13 pm, and reach a higher peak between around 20 pm to 22pm.
 
-* For days in week, generally each day in week follows similar distribution and pattern on 24-hour activity counts. But there are still some extreme points, like that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night. There may be some connections between these extreme points with the beginning and ending of weekends.
+* There are some extreme points, such as that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night.
 
 
 ## Problem 3
 
 ```{r}
-library(p8105.datasets)
-library(patchwork)
 data("ny_noaa")
 ```
 
@@ -230,7 +216,11 @@ noaa_df =
   ny_noaa %>%
   janitor::clean_names() %>%
   separate(date, c("year", "month", "day"), sep = "-", convert = TRUE) %>%
-  mutate(tmax = as.numeric(tmax), tmin = as.numeric(tmin))
+  mutate(
+    prcp = prcp / 10,
+    tmax = as.numeric(tmax) / 10, 
+    tmin = as.numeric(tmin) / 10
+    )
 ```
 
 The resulting dataset has `r nrow(noaa_df)` rows and `r ncol(noaa_df)` columns.
@@ -246,41 +236,28 @@ most_snow =
   head(1)
 ```
 
-For snowfall, the most commonly observed values are: `r most_snow$snow` with `r most_snow$n_obs` observations. That's probably because the New York State does not often snow and some records may be missing.
+For snowfall, the most commonly observed values are: `r most_snow$snow` with `r most_snow$n_obs` observations. That's probably because the New York State does not often snow.
 
 *Question 2.* Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
 ```{r}
-tmax_mean_jan = 
-  noaa_df %>%
-    filter(month == 1) %>%
-    group_by(id, year) %>%
-    summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
-    drop_na(mean_tmax) %>%
-    ggplot(aes(x = id, y = mean_tmax, color = year)) +
-    geom_point(alpha = 0.5) +
-    geom_smooth(se = FALSE) +
-    theme(legend.position = "bottom") + 
-    labs(x = 'Station', y = "Mean Max Temperature") + 
-    ggtitle("January")
-
-tmax_mean_jul = 
-  noaa_df %>%
-    filter(month == 7) %>%
-    group_by(id, year) %>%
-    summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
-    drop_na(mean_tmax) %>%
-    ggplot(aes(x = id, y = mean_tmax, color = year)) +
-    geom_point(alpha = 0.5) +
-    geom_smooth(se = FALSE) +
-    theme(legend.position = "bottom") +
-    labs(x = 'Station', y = "Mean Max Temperature") + 
-    ggtitle("July")
-
-tmax_mean_jan + tmax_mean_jul
+noaa_df %>%
+  filter(month == 1 | month == 7) %>%
+  group_by(year, month, id) %>%
+  mutate(month = factor(month, levels = c(1, 7))) %>%
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
+  drop_na(mean_tmax) %>%
+  ggplot(aes(x = year, y = mean_tmax, color = month)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom") + 
+  labs(x = 'Year', y = "Mean Max Temperature", color = "Month") + 
+  facet_grid(. ~ month)
 ```
 
-Based on the two-panel plot, the range of max temperature(tmax) in January is around -100 to 100, in July is around 200 to 320. Generally the mean tmax in July is much higher than January. And the temperature difference range in January is around 200, which is larger than in July that is around 100. There is some outliers in January and July. In January there are extremely low tmax lower than -100 and extremely high tmax close to 100. In July there are also extremely high tmax close to 350 and extremely low tmax lower than 150.
+Based on the two-panel plot, the range of max temperature(tmax) in January is around -10 to 10 (degree C), in July is around 20 to 30. Generally the mean tmax in July is much higher than January. And the temperature difference range in January is around 20, which is larger than in July that is around 10. There is some outliers in January and July. In January there are extremely low tmax lower than -10 and extremely high tmax close to 10. In July there are also extremely high tmax close to 35 and extremely low tmax lower than 15.
+
+In addition, generally the distributions of max temperature in January and July are changing with fluctuation during the past years, with average tmax around 0 in January and average tmax around 27 in July.
 
 *Question 3.* Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
 
@@ -288,19 +265,18 @@ Based on the two-panel plot, the range of max temperature(tmax) in January is ar
 ```{r}
 tmax_vs_tmin = 
   noaa_df %>%
-  ggplot(aes(x = tmin, y = tmax)) +
-  geom_hex()
+  ggplot(aes(x = tmax, y = tmin)) +
+  geom_hex() + 
+  labs(x = 'Max Temperature', y = "Min Temperature")
 
-snowfall_plot = 
-  ny_noaa %>%
-  janitor::clean_names() %>%
-  mutate(tmax = as.numeric(tmax), tmin = as.numeric(tmin)) %>%
-  group_by(date) %>%
+snowfall_dis = 
+  noaa_df %>%
   filter(snow > 0 & snow < 100) %>%
-  summarize(mean_snow = mean(snow, na.rm = TRUE)) %>%
-  ggplot(aes(x = date, y = mean_snow)) + 
-  geom_hex()
+  mutate(year = factor(year)) %>%
+  ggplot(aes(x = snow, y = year)) + 
+  geom_density_ridges(scale = 0.6) +
+  labs(x = 'Snowfall', y = "Year")
 
-tmax_vs_tmin / snowfall_plot
+tmax_vs_tmin + snowfall_dis
 ```
 
