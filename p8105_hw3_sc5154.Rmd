@@ -95,11 +95,6 @@ ins_df %>%
   ggplot(aes(x = reorder(aisle, -n_obs), y = n_obs)) +
     geom_col() +
     scale_x_discrete(guide = guide_axis(angle = 45)) +
-    geom_text(
-      aes(label = n_obs), 
-      position = position_dodge(width = 0.9), 
-      size = 1.0,
-      cvjust = -0.25) + 
     labs(x = "Aisle", y = "Number of Items") 
 ```
 
@@ -217,6 +212,7 @@ noaa_df =
   janitor::clean_names() %>%
   separate(date, c("year", "month", "day"), sep = "-", convert = TRUE) %>%
   mutate(
+    month = month.name[as.integer(month)],
     prcp = prcp / 10,
     tmax = as.numeric(tmax) / 10, 
     tmin = as.numeric(tmin) / 10
@@ -242,16 +238,14 @@ For snowfall, the most commonly observed values are: `r most_snow$snow` with `r 
 
 ```{r}
 noaa_df %>%
-  filter(month == 1 | month == 7) %>%
-  group_by(year, month, id) %>%
-  mutate(month = factor(month, levels = c(1, 7))) %>%
+  filter(month == 'January' | month == 'July') %>%
+  group_by(month, id, year) %>%
   summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
-  drop_na(mean_tmax) %>%
-  ggplot(aes(x = year, y = mean_tmax, color = month)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(se = FALSE) +
-  theme(legend.position = "bottom") + 
-  labs(x = 'Year', y = "Mean Max Temperature", color = "Month") + 
+  ggplot(aes(x = year, y = mean_tmax, color = id)) +
+  geom_point(size = 0.2, alpha = 0.5) +
+  geom_path(alpha = 0.5) +
+  theme(legend.position = "none") + 
+  labs(x = 'Year', y = "Mean Max Temperature") +
   facet_grid(. ~ month)
 ```
 
@@ -274,7 +268,7 @@ snowfall_dis =
   filter(snow > 0 & snow < 100) %>%
   mutate(year = factor(year)) %>%
   ggplot(aes(x = snow, y = year)) + 
-  geom_density_ridges(scale = 0.6) +
+  geom_density_ridges(scale = 0.8) +
   labs(x = 'Snowfall', y = "Year")
 
 tmax_vs_tmin + snowfall_dis
