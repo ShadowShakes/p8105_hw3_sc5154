@@ -166,7 +166,6 @@ accel_df %>%
   knitr::kable()
 ```
 
-
 The daily total activities tend to change with fluctuation within each week. The daily total activity counts on Saturday for last two weeks are both 1440 which means the activity counts is 1 for every minute. That seems to be abnormal and the data on these two days could be considered as outliers.
 
 *Question 3.* Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
@@ -191,7 +190,6 @@ Based on this graph, we have:
 * Generally in each day, the activity counts tend to be lower at late night, midnight and early morning from around 24 pm to 6 am, and higher between 6am to 22 pm. Generally the activity counts would reach a peak between around 11 am to 13 pm, and reach a higher peak between around 20 pm to 22pm.
 
 * There are some extreme points, such as that on Sunday and Friday, when the level becomes extremely high on Sunday noon and Friday night.
-
 
 ## Problem 3
 
@@ -242,8 +240,8 @@ noaa_df %>%
   group_by(month, id, year) %>%
   summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
   ggplot(aes(x = year, y = mean_tmax, color = id)) +
-  geom_point(size = 0.2, alpha = 0.5) +
-  geom_path(alpha = 0.5) +
+  geom_point(size = 0.2, alpha = 0.4) +
+  geom_line(alpha = 0.4) +
   theme(legend.position = "none") + 
   labs(x = 'Year', y = "Mean Max Temperature") +
   facet_grid(. ~ month)
@@ -254,7 +252,6 @@ Based on the two-panel plot, the range of max temperature(tmax) in January is ar
 In addition, generally the distributions of max temperature in January and July are changing with fluctuation during the past years, with average tmax around 0 in January and average tmax around 27 in July.
 
 *Question 3.* Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
-
 
 ```{r}
 tmax_vs_tmin = 
